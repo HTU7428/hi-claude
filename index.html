@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- 브라우저 탭에 보이는 제목 -->
+  <title>나의 첫 웹페이지</title>
+
+  <!-- 여기부터 디자인(CSS): 색, 크기, 배치를 정합니다 -->
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, "Apple SD Gothic Neo", sans-serif;
+      background: #f3f1ec;
+      color: #222;
+      display: flex;
+      justify-content: center;
+      padding: 40px 16px;
+    }
+    .card {
+      background: white;
+      max-width: 480px;
+      width: 100%;
+      padding: 32px;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      text-align: center;
+    }
+    .emoji {
+      font-size: 64px;
+    }
+    h1 {
+      margin: 8px 0;
+    }
+    ul {
+      text-align: left;
+      line-height: 1.8;
+    }
+    button {
+      margin-top: 16px;
+      padding: 12px 24px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      background: #d97757;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #c4623f;
+    }
+
+    /* 독서 기록장 디자인 */
+    .books {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid #e5e1d8;
+      text-align: left;
+    }
+    .books form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .books input {
+      padding: 10px;
+      font-size: 15px;
+      border: 1px solid #d6d1c6;
+      border-radius: 8px;
+      font-family: inherit;
+    }
+    .books form button {
+      margin-top: 4px;
+    }
+    .book-list {
+      list-style: none;
+      padding: 0;
+      margin: 16px 0 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .book-list li {
+      background: #f8f6f1;
+      border-radius: 8px;
+      padding: 12px;
+      line-height: 1.5;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .book-title {
+      font-weight: bold;
+    }
+    .book-date {
+      font-size: 13px;
+      color: #888;
+    }
+    .book-list .delete {
+      margin: 0;
+      padding: 4px 10px;
+      font-size: 13px;
+      background: #ccc;
+      align-self: flex-start;
+    }
+    .empty {
+      color: #888;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- 여기부터 내용(HTML): 화면에 보이는 글과 버튼입니다 -->
+  <div class="card">
+    <div class="emoji">🦁</div>
+    <h1>안녕하세요, 저는 황태우입니다</h1>
+    <p>인생 처음으로 만든 웹페이지예요!</p>
+
+    <h2>좋아하는 것</h2>
+    <ul>
+      <li>조용한 산책</li>
+      <li>도서관에서 책 읽기</li>
+      <li>친한 친구와 술 마시기</li>
+    </ul>
+
+    <button onclick="sayHello()">눌러보세요</button>
+    <p id="message"></p>
+
+    <!-- 독서 기록장: 읽은 책을 적어 두는 곳 -->
+    <section class="books">
+      <h2>📚 나의 독서 기록장</h2>
+      <form id="book-form">
+        <input id="book-title" placeholder="책 제목" required>
+        <input id="book-date" type="date" required>
+        <input id="book-note" placeholder="한 줄 감상">
+        <button type="submit">기록하기</button>
+      </form>
+      <p id="empty" class="empty">아직 기록한 책이 없어요. 첫 책을 적어 보세요!</p>
+      <ul id="book-list" class="book-list"></ul>
+    </section>
+  </div>
+
+  <!-- 여기부터 동작(JavaScript): 버튼을 눌렀을 때 일어나는 일 -->
+  <script>
+    function sayHello() {
+      document.getElementById("message").textContent =
+        "🎉 방문해 주셔서 감사합니다!";
+    }
+
+    // ===== 독서 기록장 =====
+    // 기록은 브라우저 안(localStorage)에 저장돼서, 페이지를 껐다 켜도 남아 있어요
+    const STORAGE_KEY = "my-books";
+
+    function loadBooks() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveBooks(books) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
+      } catch (e) {
+        // 저장이 안 되는 환경이면 조용히 넘어가요
+      }
+    }
+
+    let books = loadBooks();
+
+    // 책 목록을 화면에 그려요
+    function showBooks() {
+      const list = document.getElementById("book-list");
+      list.innerHTML = "";
+      document.getElementById("empty").hidden = books.length > 0;
+
+      books.forEach(function (book, i) {
+        const li = document.createElement("li");
+
+        const info = document.createElement("div");
+        const title = document.createElement("div");
+        title.className = "book-title";
+        title.textContent = book.title;
+        const date = document.createElement("div");
+        date.className = "book-date";
+        date.textContent = book.date;
+        info.appendChild(title);
+        info.appendChild(date);
+        if (book.note) {
+          const note = document.createElement("div");
+          note.textContent = "“" + book.note + "”";
+          info.appendChild(note);
+        }
+
+        const del = document.createElement("button");
+        del.className = "delete";
+        del.textContent = "삭제";
+        del.onclick = function () {
+          books.splice(i, 1);
+          saveBooks(books);
+          showBooks();
+        };
+
+        li.appendChild(info);
+        li.appendChild(del);
+        list.appendChild(li);
+      });
+    }
+
+    // '기록하기' 버튼을 누르면 새 책을 맨 위에 추가해요
+    document.getElementById("book-form").addEventListener("submit", function (event) {
+      event.preventDefault();
+      books.unshift({
+        title: document.getElementById("book-title").value.trim(),
+        date: document.getElementById("book-date").value,
+        note: document.getElementById("book-note").value.trim()
+      });
+      saveBooks(books);
+      showBooks();
+      event.target.reset();
+      document.getElementById("book-date").valueAsDate = new Date();
+    });
+
+    // 날짜 칸은 오늘 날짜로 미리 채워 둬요
+    document.getElementById("book-date").valueAsDate = new Date();
+    showBooks();
+  </script>
+</body>
+</html>
