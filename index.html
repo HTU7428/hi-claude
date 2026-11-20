@@ -4,7 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- 브라우저 탭에 보이는 제목 -->
-  <title>나의 첫 웹페이지</title>
+  <title>나의 기록장</title>
+
+  <!-- 아이폰 홈 화면에 추가했을 때 앱처럼 보이게 하는 설정 -->
+  <meta name="apple-mobile-web-app-capable" content="yes">          <!-- 주소창 없이 전체 화면 -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="나의 기록장">    <!-- 아이콘 아래 이름 -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#f3f1ec">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">         <!-- 🦁 아이콘 -->
+  <link rel="manifest" href="manifest.json">
 
   <!-- 여기부터 디자인(CSS): 색, 크기, 배치를 정합니다 -->
   <style>
@@ -62,7 +71,8 @@
       flex-direction: column;
       gap: 8px;
     }
-    .books input {
+    .books input,
+    .books select {
       padding: 10px;
       font-size: 15px;
       border: 1px solid #d6d1c6;
@@ -107,6 +117,143 @@
       color: #888;
       font-size: 14px;
     }
+
+    /* 책 사진 */
+    .photo-label {
+      font-size: 14px;
+      color: #666;
+      margin-top: 4px;
+    }
+    .book-cover {
+      width: 56px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 4px;
+      flex-shrink: 0;
+      background: #e5e1d8;
+    }
+    .book-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .error {
+      color: #b23a2e;
+      font-size: 14px;
+    }
+    #step-shot {
+      margin: 6px 0 8px;
+    }
+    .ocr-raw {
+      white-space: pre-wrap;
+      font-size: 12px;
+      background: #f8f6f1;
+      padding: 8px;
+      border-radius: 8px;
+      max-height: 160px;
+      overflow: auto;
+    }
+    .highlight {
+      outline: 2px solid #d97757;
+    }
+
+    /* 술자리 기록장 */
+    .row2 {
+      display: flex;
+      gap: 8px;
+    }
+    .row2 > * {
+      flex: 1;
+      min-width: 0;
+    }
+    .drink-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .drink-row select {
+      flex: 2;
+      min-width: 0;
+    }
+    .drink-row input {
+      flex: 1;
+      min-width: 0;
+    }
+    .drink-row span {
+      font-size: 14px;
+      color: #666;
+    }
+    .books form .small-btn {
+      margin: 0;
+      padding: 6px 12px;
+      font-size: 14px;
+      background: #ccc;
+      color: #333;
+    }
+    .books form .add-btn {
+      align-self: flex-start;
+      background: #f3e3dc;
+      color: #c4623f;
+    }
+    .drink-summary {
+      font-size: 14px;
+      margin-top: 2px;
+    }
+
+    /* 걸음 수 기록장 디자인 (독서 기록장 모양을 같이 써요) */
+    .goal {
+      font-size: 14px;
+      color: #666;
+      margin: 0 0 12px;
+    }
+    .chart {
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+      height: 140px;
+      margin-top: 16px;
+      padding: 0 4px;
+      border-bottom: 1px solid #d6d1c6;
+      position: relative;
+    }
+    .goal-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      border-top: 1px dashed #d97757;
+    }
+    .bar-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      height: 100%;
+      font-size: 11px;
+      color: #888;
+    }
+    .bar {
+      width: 100%;
+      max-width: 36px;
+      background: #e8c4b5;
+      border-radius: 4px 4px 0 0;
+    }
+    .bar.reached {
+      background: #d97757;
+    }
+    .bar-labels {
+      display: flex;
+      gap: 6px;
+      padding: 4px 4px 0;
+      font-size: 11px;
+      color: #888;
+    }
+    .bar-labels span {
+      flex: 1;
+      text-align: center;
+    }
+    .steps-num {
+      font-variant-numeric: tabular-nums;
+    }
   </style>
 </head>
 
@@ -121,7 +268,7 @@
     <ul>
       <li>조용한 산책</li>
       <li>도서관에서 책 읽기</li>
-      <li>친한 친구와 술 마시기</li>
+      <li>술과 친구와 함께 여유로운 인생</li>
     </ul>
 
     <button onclick="sayHello()">눌러보세요</button>
@@ -134,10 +281,74 @@
         <input id="book-title" placeholder="책 제목" required>
         <input id="book-date" type="date" required>
         <input id="book-note" placeholder="한 줄 감상">
+        <!-- 책 사진: 핸드폰에서는 카메라로 바로 찍을 수도 있어요 -->
+        <label class="photo-label" for="book-photo">📷 책 표지 사진 (올리면 제목·날짜 자동 입력)</label>
+        <input id="book-photo" type="file" accept="image/*">
+        <img id="photo-preview" class="book-cover" alt="선택한 책 사진 미리보기" hidden>
+        <p id="book-ocr-status" class="goal" hidden></p>
         <button type="submit">기록하기</button>
       </form>
+      <p id="book-error" class="error" hidden></p>
       <p id="empty" class="empty">아직 기록한 책이 없어요. 첫 책을 적어 보세요!</p>
       <ul id="book-list" class="book-list"></ul>
+    </section>
+
+    <!-- 걸음 수 기록장: 매일 걸은 걸음 수를 적어 두는 곳 -->
+    <section class="books">
+      <h2>🚶 나의 걸음 수 기록장</h2>
+      <p class="goal">하루 목표: 8,000보 (달성하면 🦁)</p>
+
+      <!-- 손목닥터 캡처를 올리면 날짜와 걸음 수를 읽어서 아래 칸을 채워줘요 -->
+      <label class="photo-label" for="step-shot">📷 손목닥터 캡처로 입력하기</label>
+      <input id="step-shot" type="file" accept="image/*">
+      <p id="ocr-status" class="goal" hidden></p>
+      <details id="ocr-raw-box" hidden>
+        <summary class="goal">읽어낸 글자 보기</summary>
+        <pre id="ocr-raw" class="ocr-raw"></pre>
+      </details>
+
+      <form id="step-form">
+        <input id="step-date" type="date" required>
+        <input id="step-count" type="number" min="0" step="1" placeholder="걸음 수 (예: 8500)" required>
+        <button type="submit">기록하기</button>
+      </form>
+
+      <!-- 최근 7일 막대그래프 -->
+      <div id="step-chart-box" hidden>
+        <div class="chart" id="step-chart"></div>
+        <div class="bar-labels" id="step-labels"></div>
+      </div>
+
+      <p id="step-empty" class="empty">아직 기록한 걸음 수가 없어요. 오늘 걸음 수를 적어 보세요!</p>
+      <ul id="step-list" class="book-list"></ul>
+    </section>
+
+    <!-- 술자리 기록장: 친구와 함께한 날을 적어 두는 곳 -->
+    <section class="books">
+      <h2>🍶 술과 친구의 추억 기록장</h2>
+      <form id="drink-form">
+        <!-- 사진을 먼저 올리면 날짜·시간·장소·메뉴를 자동으로 채워줘요 -->
+        <label class="photo-label" for="drink-photo">📷 사진 (올리면 날짜·시간·가게·메뉴 자동 입력)</label>
+        <input id="drink-photo" type="file" accept="image/*">
+        <img id="drink-preview" class="book-cover" alt="선택한 사진 미리보기" hidden>
+        <p id="drink-ocr-status" class="goal" hidden></p>
+        <a id="drink-map-link" class="goal" href="#" target="_blank" rel="noopener" hidden>🗺️ 네이버 지도에서 이 가게 찾아보기</a>
+
+        <div class="row2">
+          <input id="drink-date" type="date" required aria-label="날짜">
+          <input id="drink-time" type="time" aria-label="시간">
+        </div>
+        <input id="drink-place" placeholder="장소 (예: 을지로 노가리 골목)" required>
+        <input id="drink-menu" placeholder="메뉴 (예: 노가리, 계란말이)">
+
+        <!-- 마신 술: 종류는 목록에서 고르고, 병 수는 직접 입력해요 -->
+        <div id="drink-rows"></div>
+        <button type="button" id="add-drink" class="small-btn add-btn">+ 술 종류 추가</button>
+        <button type="submit">기록하기</button>
+      </form>
+      <p id="drink-error" class="error" hidden></p>
+      <p id="drink-empty" class="empty">아직 추억이 없어요. 친구와 함께한 날의 사진을 올려 보세요!</p>
+      <ul id="drink-list" class="book-list"></ul>
     </section>
   </div>
 
@@ -146,6 +357,12 @@
     function sayHello() {
       document.getElementById("message").textContent =
         "🎉 방문해 주셔서 감사합니다!";
+    }
+
+    // 오늘 날짜를 "2026-11-21" 모양으로 만들어요 (한국 시간 기준)
+    function today() {
+      const d = new Date();
+      return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
     }
 
     // ===== 독서 기록장 =====
@@ -160,13 +377,195 @@
       }
     }
 
+    // 저장에 성공하면 true, 실패하면(저장 공간이 꽉 찼을 때 등) false를 돌려줘요
     function saveBooks(books) {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
+        return true;
       } catch (e) {
-        // 저장이 안 되는 환경이면 조용히 넘어가요
+        return false;
       }
     }
+
+    // ----- 책 사진 -----
+    // 사진을 그대로 저장하면 너무 커서, 작게 줄여서(가로세로 최대 400px) 저장해요
+    let photoData = ""; // 줄인 사진이 글자 형태(data URL)로 들어가요
+
+    function shrinkPhoto(file, callback) {
+      const reader = new FileReader();
+      reader.onload = function () {
+        const img = new Image();
+        img.onload = function () {
+          const MAX = 400;
+          const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+          callback(canvas.toDataURL("image/jpeg", 0.75));
+        };
+        img.onerror = function () { callback(""); };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // 날짜를 "2026-11-21" 모양 글자로 바꿔요
+    function ymd(d) {
+      return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    }
+
+    // 사진 파일 속 정보(EXIF)를 읽어요: 찍은 날짜, 시간, 찍은 위치(위도·경도)
+    // 정보가 없으면 각각 null로 남아요
+    async function readPhotoInfo(file) {
+      const info = { date: null, time: null, lat: null, lon: null };
+      try {
+        const buf = await file.slice(0, 262144).arrayBuffer();
+        const v = new DataView(buf);
+        if (v.getUint16(0) !== 0xFFD8) return info; // JPEG 사진이 아니면 포기
+        let off = 2;
+        while (off + 10 < v.byteLength) {
+          const marker = v.getUint16(off);
+          const size = v.getUint16(off + 2);
+          if (marker === 0xFFE1 && v.getUint32(off + 4) === 0x45786966) { // "Exif"
+            const tiff = off + 10;
+            const little = v.getUint16(tiff) === 0x4949;
+            const u16 = function (o) { return v.getUint16(o, little); };
+            const u32 = function (o) { return v.getUint32(o, little); };
+            // 정보 묶음(IFD) 안의 항목들을 {번호: 위치}로 모아요
+            const entries = function (ifd) {
+              const out = {};
+              const n = u16(ifd);
+              for (let i = 0; i < n; i++) {
+                const e = ifd + 2 + i * 12;
+                out[u16(e)] = e;
+              }
+              return out;
+            };
+            const ascii = function (o, len) {
+              let s = "";
+              for (let i = 0; i < len; i++) {
+                const c = v.getUint8(o + i);
+                if (!c) break;
+                s += String.fromCharCode(c);
+              }
+              return s;
+            };
+            const rational = function (o) { return u32(o) / u32(o + 4); };
+
+            const ifd0 = entries(tiff + u32(tiff + 4));
+            let raw = null;
+            if (ifd0[0x8769]) {
+              const exif = entries(tiff + u32(ifd0[0x8769] + 8));
+              if (exif[0x9003]) raw = ascii(tiff + u32(exif[0x9003] + 8), 19); // 찍은 날짜·시간
+            }
+            if (!raw && ifd0[0x0132]) raw = ascii(tiff + u32(ifd0[0x0132] + 8), 19); // 수정한 날짜·시간
+            const m = raw && raw.match(/^(\d{4}):(\d{2}):(\d{2})(?: (\d{2}):(\d{2}))?/);
+            if (m) {
+              info.date = m[1] + "-" + m[2] + "-" + m[3];
+              if (m[4]) info.time = m[4] + ":" + m[5];
+            }
+
+            if (ifd0[0x8825]) { // 위치 정보
+              const g = entries(tiff + u32(ifd0[0x8825] + 8));
+              if (g[2] && g[4]) {
+                const dms = function (e) {
+                  const o = tiff + u32(e + 8);
+                  return rational(o) + rational(o + 8) / 60 + rational(o + 16) / 3600;
+                };
+                let lat = dms(g[2]);
+                let lon = dms(g[4]);
+                if (g[1] && ascii(g[1] + 8, 1) === "S") lat = -lat;
+                if (g[3] && ascii(g[3] + 8, 1) === "W") lon = -lon;
+                if (isFinite(lat) && isFinite(lon) && (lat || lon)) {
+                  info.lat = lat;
+                  info.lon = lon;
+                }
+              }
+            }
+            return info;
+          }
+          if ((marker & 0xFF00) !== 0xFF00) break;
+          off += 2 + size;
+        }
+      } catch (e) {}
+      return info;
+    }
+
+    async function readPhotoDate(file) {
+      return (await readPhotoInfo(file)).date;
+    }
+
+    // 표지에서 읽은 줄들 중 "가장 큰 글씨"를 제목으로 골라요
+    function pickTitle(lines) {
+      const good = lines
+        .map(function (l) {
+          return {
+            text: l.text.replace(/[^가-힣A-Za-z0-9\s:,.!?'\-]/g, "").replace(/\s+/g, " ").trim(),
+            height: l.bbox.y1 - l.bbox.y0,
+            top: l.bbox.y0,
+            conf: l.confidence
+          };
+        })
+        .filter(function (l) { return l.text.replace(/\s/g, "").length >= 2 && l.conf > 40; });
+      if (!good.length) return "";
+      const biggest = Math.max(...good.map(function (l) { return l.height; }));
+      // 제목이 두 줄일 수 있어서, 가장 큰 글씨와 비슷한 크기의 줄을 위에서부터 이어 붙여요
+      return good
+        .filter(function (l) { return l.height >= biggest * 0.75; })
+        .sort(function (a, b) { return a.top - b.top; })
+        .map(function (l) { return l.text; })
+        .join(" ");
+    }
+
+    // 표지 사진을 고르면: 미리보기 + 찍은 날짜 + 제목 읽기
+    document.getElementById("book-photo").addEventListener("change", async function (event) {
+      const file = event.target.files[0];
+      const preview = document.getElementById("photo-preview");
+      const status = document.getElementById("book-ocr-status");
+      const titleInput = document.getElementById("book-title");
+      const dateInput = document.getElementById("book-date");
+      photoData = "";
+      preview.hidden = true;
+      if (!file) return;
+
+      shrinkPhoto(file, function (data) {
+        photoData = data;
+        if (data) {
+          preview.src = data;
+          preview.hidden = false;
+        }
+      });
+
+      // 1) 날짜: 사진 속 찍은 날짜 → 없으면 파일 날짜
+      const shotDate = (await readPhotoDate(file)) || ymd(new Date(file.lastModified || Date.now()));
+      dateInput.value = shotDate;
+      dateInput.classList.add("highlight");
+
+      // 2) 제목: 표지 글자 읽기
+      status.hidden = false;
+      status.className = "goal";
+      status.textContent = "표지에서 제목을 읽는 중이에요… (처음 한 번은 30초~1분 걸려요)";
+      try {
+        await loadTesseract();
+        if (!ocrWorker) ocrWorker = await Tesseract.createWorker("kor+eng");
+        const result = await ocrWorker.recognize(file);
+        const title = pickTitle(result.data.lines || []);
+        if (title && !titleInput.value.trim()) {
+          titleInput.value = title;
+          titleInput.classList.add("highlight");
+          status.textContent = "제목 \"" + title + "\", 날짜 " + shotDate + "로 채웠어요. 맞는지 확인하고 고쳐 주세요.";
+        } else if (title) {
+          status.textContent = "표지에서 \"" + title + "\"를 읽었어요. 이미 적은 제목은 그대로 뒀어요.";
+        } else {
+          status.className = "error";
+          status.textContent = "표지에서 제목을 찾지 못했어요. 제목은 직접 적어 주세요. (날짜는 " + shotDate + "로 채웠어요)";
+        }
+      } catch (e) {
+        status.className = "error";
+        status.textContent = "글자 인식 도구를 불러오지 못했어요. 제목은 직접 적어 주세요.";
+      }
+    });
 
     let books = loadBooks();
 
@@ -179,7 +578,17 @@
       books.forEach(function (book, i) {
         const li = document.createElement("li");
 
+        // 사진이 있으면 왼쪽에 보여줘요
+        if (book.photo) {
+          const cover = document.createElement("img");
+          cover.className = "book-cover";
+          cover.src = book.photo;
+          cover.alt = book.title + " 사진";
+          li.appendChild(cover);
+        }
+
         const info = document.createElement("div");
+        info.className = "book-info";
         const title = document.createElement("div");
         title.className = "book-title";
         title.textContent = book.title;
@@ -212,20 +621,629 @@
     // '기록하기' 버튼을 누르면 새 책을 맨 위에 추가해요
     document.getElementById("book-form").addEventListener("submit", function (event) {
       event.preventDefault();
+      const error = document.getElementById("book-error");
       books.unshift({
         title: document.getElementById("book-title").value.trim(),
         date: document.getElementById("book-date").value,
-        note: document.getElementById("book-note").value.trim()
+        note: document.getElementById("book-note").value.trim(),
+        photo: photoData
       });
-      saveBooks(books);
+      if (!saveBooks(books)) {
+        // 저장 공간이 꽉 차면 방금 추가한 책을 빼고 안내해요
+        books.shift();
+        error.textContent = "저장 공간이 꽉 차서 기록하지 못했어요. 사진이 있는 오래된 기록을 지우거나 사진 없이 기록해 보세요.";
+        error.hidden = false;
+        return;
+      }
+      error.hidden = true;
       showBooks();
       event.target.reset();
-      document.getElementById("book-date").valueAsDate = new Date();
+      photoData = "";
+      document.getElementById("photo-preview").hidden = true;
+      document.getElementById("book-ocr-status").hidden = true;
+      document.getElementById("book-title").classList.remove("highlight");
+      document.getElementById("book-date").classList.remove("highlight");
+      document.getElementById("book-date").value = today();
     });
 
     // 날짜 칸은 오늘 날짜로 미리 채워 둬요
-    document.getElementById("book-date").valueAsDate = new Date();
+    document.getElementById("book-date").value = today();
     showBooks();
+
+    // ===== 걸음 수 기록장 =====
+    const STEP_KEY = "my-steps";
+    const GOAL = 8000; // 하루 목표 걸음 수 (바꾸고 싶으면 이 숫자만 고치면 돼요)
+
+    let steps;
+    try {
+      steps = JSON.parse(localStorage.getItem(STEP_KEY)) || [];
+    } catch (e) {
+      steps = [];
+    }
+
+    function saveSteps() {
+      try {
+        localStorage.setItem(STEP_KEY, JSON.stringify(steps));
+      } catch (e) {}
+    }
+
+    // 숫자에 쉼표 넣기: 8500 → 8,500
+    function comma(n) {
+      return n.toLocaleString("ko-KR");
+    }
+
+    function showSteps() {
+      // 날짜가 최근인 것이 위로 오게 정렬해요
+      steps.sort(function (a, b) { return b.date.localeCompare(a.date); });
+
+      document.getElementById("step-empty").hidden = steps.length > 0;
+      document.getElementById("step-chart-box").hidden = steps.length === 0;
+
+      // 1) 목록 그리기
+      const list = document.getElementById("step-list");
+      list.innerHTML = "";
+      steps.forEach(function (s, i) {
+        const li = document.createElement("li");
+        const info = document.createElement("div");
+        const num = document.createElement("div");
+        num.className = "book-title steps-num";
+        num.textContent = comma(s.count) + "보" + (s.count >= GOAL ? " 🦁" : "");
+        const date = document.createElement("div");
+        date.className = "book-date";
+        date.textContent = s.date;
+        info.appendChild(num);
+        info.appendChild(date);
+
+        const del = document.createElement("button");
+        del.className = "delete";
+        del.textContent = "삭제";
+        del.onclick = function () {
+          steps.splice(i, 1);
+          saveSteps();
+          showSteps();
+        };
+        li.appendChild(info);
+        li.appendChild(del);
+        list.appendChild(li);
+      });
+
+      // 2) 최근 7일 막대그래프 그리기 (왼쪽이 오래된 날)
+      const recent = steps.slice(0, 7).reverse();
+      const max = Math.max(GOAL, ...recent.map(function (s) { return s.count; }));
+      const chart = document.getElementById("step-chart");
+      const labels = document.getElementById("step-labels");
+      chart.innerHTML = "";
+      labels.innerHTML = "";
+
+      // 목표선(점선)
+      const line = document.createElement("div");
+      line.className = "goal-line";
+      line.style.bottom = (GOAL / max * 100) + "%";
+      chart.appendChild(line);
+
+      recent.forEach(function (s) {
+        const wrap = document.createElement("div");
+        wrap.className = "bar-wrap";
+        wrap.title = s.date + " · " + comma(s.count) + "보";
+        const bar = document.createElement("div");
+        bar.className = "bar" + (s.count >= GOAL ? " reached" : "");
+        bar.style.height = (s.count / max * 100) + "%";
+        wrap.appendChild(bar);
+        chart.appendChild(wrap);
+
+        const label = document.createElement("span");
+        label.textContent = s.date.slice(5).replace("-", "/"); // 2026-11-21 → 11/21
+        labels.appendChild(label);
+      });
+    }
+
+    document.getElementById("step-form").addEventListener("submit", function (event) {
+      event.preventDefault();
+      const date = document.getElementById("step-date").value;
+      const count = Number(document.getElementById("step-count").value);
+      // 같은 날짜가 이미 있으면 새 숫자로 바꿔요
+      steps = steps.filter(function (s) { return s.date !== date; });
+      steps.push({ date: date, count: count });
+      saveSteps();
+      showSteps();
+      document.getElementById("step-count").value = "";
+    });
+
+    document.getElementById("step-date").value = today();
+    showSteps();
+
+    // ===== 손목닥터 캡처 읽기 (글자 인식, OCR) =====
+    // 사진 속 글자는 Tesseract.js라는 도구가 이 브라우저 안에서 읽어요.
+    // 캡처 사진은 어디에도 올라가지 않아요. (처음 한 번 글자 인식 자료만 내려받아요)
+    let ocrWorker = null;
+
+    // 글자 인식 도구를 처음 쓸 때만 불러와요
+    function loadTesseract() {
+      return new Promise(function (resolve, reject) {
+        if (window.Tesseract) return resolve();
+        const s = document.createElement("script");
+        s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+
+    // 읽어낸 글자에서 날짜를 찾아요 (예: 2026.11.21 / 11월 21일 / 오늘)
+    function findDate(text) {
+      const now = new Date();
+      const pad = function (n) { return String(n).padStart(2, "0"); };
+      let m = text.match(/(20\d{2})\s*[.\-\/년]\s*(\d{1,2})\s*[.\-\/월]\s*(\d{1,2})/);
+      if (m) return m[1] + "-" + pad(m[2]) + "-" + pad(m[3]);
+      m = text.match(/(\d{1,2})\s*월\s*(\d{1,2})\s*일/);
+      if (m) {
+        let year = now.getFullYear();
+        // 1월에 12월 기록을 올리는 경우처럼, 미래 날짜가 되면 작년으로 봐요
+        if (Number(m[1]) > now.getMonth() + 1) year -= 1;
+        return year + "-" + pad(m[1]) + "-" + pad(m[2]);
+      }
+      if (text.includes("오늘")) return today();
+      return null;
+    }
+
+    // 읽어낸 글자에서 걸음 수를 찾아요
+    function findSteps(text) {
+      // 날짜·시간처럼 보이는 부분은 미리 지워서 헷갈리지 않게 해요
+      const clean = text
+        .replace(/20\d{2}\s*[.\-\/년]\s*\d{1,2}\s*[.\-\/월]\s*\d{1,2}\s*일?/g, " ")
+        .replace(/\d{1,2}\s*월\s*\d{1,2}\s*일/g, " ")
+        .replace(/\d{1,2}\s*:\s*\d{2}/g, " ");
+      const lines = clean.split("\n");
+      const numberPattern = /\d{1,3}(?:[,.]\d{3})+|\d{3,6}/g;
+      const toNumber = function (s) { return Number(s.replace(/[,.]/g, "")); };
+
+      // 1순위: '걸음'이나 '보'가 같이 적힌 줄의 숫자
+      for (const line of lines) {
+        if (/걸음|\d\s*보|steps?/i.test(line)) {
+          const nums = (line.match(numberPattern) || []).map(toNumber).filter(function (n) { return n >= 100 && n <= 100000; });
+          if (nums.length) return Math.max(...nums);
+        }
+      }
+      // 2순위: 화면에서 가장 큰 숫자 (보통 걸음 수가 가장 크게 적혀 있어요)
+      const all = (clean.match(numberPattern) || []).map(toNumber).filter(function (n) { return n >= 100 && n <= 100000; });
+      return all.length ? Math.max(...all) : null;
+    }
+
+    document.getElementById("step-shot").addEventListener("change", async function (event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const status = document.getElementById("ocr-status");
+      const dateInput = document.getElementById("step-date");
+      const countInput = document.getElementById("step-count");
+      // 날짜: 사진(캡처)을 찍은 날짜로 바로 채워요 (없으면 파일 날짜)
+      const shotDate = (await readPhotoDate(file)) || ymd(new Date(file.lastModified || Date.now()));
+      dateInput.value = shotDate;
+      dateInput.classList.add("highlight");
+
+      status.hidden = false;
+      status.className = "goal";
+      status.textContent = "캡처를 읽는 중이에요… (처음 한 번은 30초~1분 걸려요)";
+
+      try {
+        await loadTesseract();
+        if (!ocrWorker) ocrWorker = await Tesseract.createWorker("kor+eng");
+        const result = await ocrWorker.recognize(file);
+        const text = result.data.text;
+
+        document.getElementById("ocr-raw").textContent = text;
+        document.getElementById("ocr-raw-box").hidden = false;
+
+        const count = findSteps(text);
+        if (count) {
+          countInput.value = count;
+          countInput.classList.add("highlight");
+        }
+
+        // 화면에 적힌 날짜가 찍은 날짜와 다르면 알려만 줘요 (예: 어제 기록을 오늘 캡처한 경우)
+        const screenDate = findDate(text);
+        const dateNote = screenDate && screenDate !== shotDate
+          ? " 화면에는 " + screenDate + "로 적혀 있어요. 그 날짜 기록이면 날짜를 고쳐 주세요."
+          : "";
+
+        if (count) {
+          status.textContent = "읽었어요: " + shotDate + "(찍은 날짜) · " + comma(count) +
+            "보. 맞는지 확인하고 '기록하기'를 눌러 주세요." + dateNote;
+        } else {
+          status.className = "error";
+          status.textContent = "걸음 수를 찾지 못했어요. 숫자가 크게 보이는 화면으로 다시 캡처하거나 직접 입력해 주세요.";
+        }
+      } catch (e) {
+        status.className = "error";
+        status.textContent = "글자 인식 도구를 불러오지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.";
+      }
+      event.target.value = ""; // 같은 사진을 다시 골라도 동작하게 비워 둬요
+    });
+
+    // 기록하고 나면 강조 표시를 지워요
+    document.getElementById("step-form").addEventListener("submit", function () {
+      document.getElementById("step-date").classList.remove("highlight");
+      document.getElementById("step-count").classList.remove("highlight");
+      document.getElementById("ocr-status").hidden = true;
+      document.getElementById("ocr-raw-box").hidden = true;
+    });
+
+    // ===== 술자리 기록장 =====
+    const DRINK_KEY = "my-drinks";
+    // 고를 수 있는 술 종류 (여기에 더 적으면 목록에 추가돼요)
+    const DRINK_TYPES = ["소주", "맥주", "막걸리", "와인", "위스키", "하이볼", "사케", "고량주", "칵테일", "기타"];
+
+    let drinks;
+    try {
+      drinks = JSON.parse(localStorage.getItem(DRINK_KEY)) || [];
+    } catch (e) {
+      drinks = [];
+    }
+
+    function saveDrinks() {
+      try {
+        localStorage.setItem(DRINK_KEY, JSON.stringify(drinks));
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    // "술 종류 + 병 수" 한 줄을 만들어요
+    // type: 술 종류, bottles: 미리 채울 병 수(없으면 빈칸)
+    function addDrinkRow(type, bottles) {
+      const row = document.createElement("div");
+      row.className = "drink-row";
+
+      const select = document.createElement("select");
+      select.setAttribute("aria-label", "술 종류");
+      DRINK_TYPES.forEach(function (t) {
+        const option = document.createElement("option");
+        option.value = t;
+        option.textContent = t;
+        select.appendChild(option);
+      });
+      select.value = type || "소주";
+
+      const count = document.createElement("input");
+      count.type = "number";
+      count.min = "0";
+      count.step = "0.5"; // 반 병도 적을 수 있어요
+      count.placeholder = "병 수";
+      if (bottles) {
+        count.value = bottles;
+        count.classList.add("highlight"); // 자동으로 채운 칸은 주황 테두리
+      }
+      count.setAttribute("aria-label", "병 수");
+
+      const unit = document.createElement("span");
+      unit.textContent = "병";
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "small-btn";
+      remove.textContent = "✕";
+      remove.setAttribute("aria-label", "이 줄 지우기");
+      remove.onclick = function () {
+        // 최소 한 줄은 남겨 둬요
+        if (document.querySelectorAll("#drink-rows .drink-row").length > 1) row.remove();
+      };
+
+      row.appendChild(select);
+      row.appendChild(count);
+      row.appendChild(unit);
+      row.appendChild(remove);
+      document.getElementById("drink-rows").appendChild(row);
+    }
+
+    // 처음 화면: 소주 한 줄, 맥주 한 줄
+    function resetDrinkRows() {
+      document.getElementById("drink-rows").innerHTML = "";
+      addDrinkRow("소주");
+      addDrinkRow("맥주");
+    }
+
+    document.getElementById("add-drink").addEventListener("click", function () {
+      addDrinkRow("소주");
+    });
+
+    // ----- 사진에서 가게 이름·메뉴 찾기 -----
+    // 술병 이름은 가게 이름이 아니니까 빼요
+    // 사진 속 술 이름 → 술 종류 (여기에 이름을 더 적으면 더 많이 알아봐요)
+    const BRAND_TYPES = {
+      "소주": ["참이슬", "처음처럼", "진로", "새로", "좋은데이", "대선", "한라산", "잎새주", "소주"],
+      "맥주": ["카스", "테라", "켈리", "하이트", "클라우드", "아사히", "하이네켄", "칭따오", "버드와이저", "기네스", "맥주"],
+      "막걸리": ["막걸리", "장수", "지평", "느린마을"],
+      "하이볼": ["하이볼"],
+      "와인": ["와인"],
+      "위스키": ["위스키", "조니워커", "잭다니엘", "짐빔", "발렌타인"],
+      "사케": ["사케"],
+      "고량주": ["고량주", "연태"]
+    };
+    const DRINK_BRANDS = new RegExp(Object.values(BRAND_TYPES).flat().join("|"));
+
+    // 사진 속 글자에서 술 종류와 병 수를 세요
+    // - 영수증처럼 "참이슬 2 10,000" 이면 → 소주 2병
+    // - 술병 사진처럼 이름만 보이면 → 이름이 보인 횟수만큼 병으로 세요
+    function findDrinks(lines) {
+      const totals = {};
+      lines.forEach(function (l) {
+        const text = l.text;
+        Object.keys(BRAND_TYPES).forEach(function (type) {
+          const hits = BRAND_TYPES[type].filter(function (b) { return text.includes(b); });
+          if (!hits.length) return;
+          // 가격·도수·용량 숫자는 지우고, 남은 작은 숫자(1~30)를 수량으로 봐요
+          const rest = text
+            .replace(/\d{1,3}(?:,\d{3})+|\d{4,}/g, " ")
+            .replace(/\d+(?:\.\d+)?\s*(%|ml|mL|ML|L|도)/g, " ");
+          const q = rest.match(/(?:^|[\s x×*])(\d{1,2})\s*(?:병|개|ea|EA)?(?=\s|$)/);
+          const qty = q && Number(q[1]) >= 1 && Number(q[1]) <= 30 ? Number(q[1]) : 1;
+          totals[type] = (totals[type] || 0) + qty;
+        });
+      });
+      return Object.keys(totals).map(function (type) { return { type: type, count: totals[type] }; });
+    }
+    // "노가리 4,000원", "계란말이 12000", "골뱅이 18.0" 처럼 가격이 붙은 줄을 메뉴로 봐요
+    const PRICE_LINE = /^(.*?[가-힣].*?)[\s:.·…\-]*(\d{1,3}(?:,\d{3})+|\d{4,6}|\d{1,2}\.\d)\s*원?$/;
+
+    function cleanText(s) {
+      return s.replace(/[^가-힣A-Za-z0-9\s&'\-]/g, "").replace(/\s+/g, " ").trim();
+    }
+
+    function findMenus(lines) {
+      const menus = [];
+      lines.forEach(function (l) {
+        if (DRINK_BRANDS.test(l.text)) return; // 술은 메뉴 말고 '마신 술' 칸으로 가요
+        const m = l.text.trim().match(PRICE_LINE);
+        if (!m) return;
+        const name = cleanText(m[1]).replace(/\s+\d{1,2}$/, ""); // 영수증의 수량 숫자는 떼요
+        if (name.length >= 2 && name.length <= 15 && !menus.includes(name)) menus.push(name);
+      });
+      return menus.slice(0, 10);
+    }
+
+    function findShopName(lines) {
+      // 메뉴 줄과 술병 이름은 빼고, 남은 것 중 가장 큰 글씨를 가게 이름으로 봐요
+      const rest = lines.filter(function (l) {
+        return !PRICE_LINE.test(l.text.trim()) && !DRINK_BRANDS.test(l.text) && /[가-힣]{2,}/.test(l.text);
+      });
+      return pickTitle(rest);
+    }
+
+    // 주소를 "서울 중구 을지로 123" 처럼 짧게 만들어요
+    function shortAddress(displayName) {
+      return displayName.split(", ")
+        .filter(function (p) { return p !== "대한민국" && !/^\d{5}$/.test(p); })
+        .reverse()
+        .slice(0, 5)
+        .join(" ");
+    }
+
+    // 가게 이름으로 웹(OpenStreetMap)에서 주소를 찾아요. 사진에 위치가 있으면 그 근처에서만 찾아요
+    async function searchPlace(name, info) {
+      const base = "https://nominatim.openstreetmap.org/";
+      try {
+        if (name) {
+          let url = base + "search?format=jsonv2&limit=1&countrycodes=kr&accept-language=ko&q=" + encodeURIComponent(name);
+          if (info.lat !== null) {
+            const d = 0.02; // 약 2km 범위
+            url += "&bounded=1&viewbox=" + [info.lon - d, info.lat + d, info.lon + d, info.lat - d].join(",");
+          }
+          const found = await (await fetch(url)).json();
+          if (found.length) return { address: shortAddress(found[0].display_name), how: "가게 이름 검색" };
+        }
+        if (info.lat !== null) {
+          const url = base + "reverse?format=jsonv2&accept-language=ko&lat=" + info.lat + "&lon=" + info.lon;
+          const here = await (await fetch(url)).json();
+          if (here.display_name) return { address: shortAddress(here.display_name), how: "사진 찍은 위치" };
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    // 사진 고르기: 미리보기 + 날짜·시간 + 가게 이름·주소 + 메뉴
+    let drinkPhotoData = "";
+    document.getElementById("drink-photo").addEventListener("change", async function (event) {
+      const file = event.target.files[0];
+      const preview = document.getElementById("drink-preview");
+      const status = document.getElementById("drink-ocr-status");
+      const mapLink = document.getElementById("drink-map-link");
+      const dateInput = document.getElementById("drink-date");
+      const timeInput = document.getElementById("drink-time");
+      const placeInput = document.getElementById("drink-place");
+      const menuInput = document.getElementById("drink-menu");
+      drinkPhotoData = "";
+      preview.hidden = true;
+      mapLink.hidden = true;
+      if (!file) return;
+
+      shrinkPhoto(file, function (data) {
+        drinkPhotoData = data;
+        if (data) {
+          preview.src = data;
+          preview.hidden = false;
+        }
+      });
+
+      // 1) 날짜·시간: 사진 찍은 때 → 없으면 파일 날짜
+      const info = await readPhotoInfo(file);
+      const fileTime = new Date(file.lastModified || Date.now());
+      dateInput.value = info.date || ymd(fileTime);
+      timeInput.value = info.time || (String(fileTime.getHours()).padStart(2, "0") + ":" + String(fileTime.getMinutes()).padStart(2, "0"));
+      dateInput.classList.add("highlight");
+      timeInput.classList.add("highlight");
+
+      // 2) 사진 속 글자 읽기
+      status.hidden = false;
+      status.className = "goal";
+      status.textContent = "사진에서 가게 이름과 메뉴를 읽는 중이에요… (처음 한 번은 30초~1분 걸려요)";
+      let lines = [];
+      try {
+        await loadTesseract();
+        if (!ocrWorker) ocrWorker = await Tesseract.createWorker("kor+eng");
+        lines = (await ocrWorker.recognize(file)).data.lines || [];
+      } catch (e) {
+        status.className = "error";
+        status.textContent = "글자 인식 도구를 불러오지 못했어요. 날짜·시간만 채웠어요.";
+        return;
+      }
+
+      const shop = findShopName(lines);
+      const menus = findMenus(lines);
+      const found = findDrinks(lines);
+      const notes = [];
+
+      // 술 종류·병 수: 찾으면 목록을 새로 채워요 (숫자는 칸에서 바로 고칠 수 있어요)
+      if (found.length) {
+        document.getElementById("drink-rows").innerHTML = "";
+        found.forEach(function (d) { addDrinkRow(d.type, d.count); });
+        notes.push(found.map(function (d) { return d.type + " " + d.count + "병"; }).join(" · "));
+      }
+
+      // 3) 메뉴
+      if (menus.length && !menuInput.value.trim()) {
+        menuInput.value = menus.join(", ");
+        menuInput.classList.add("highlight");
+        notes.push("메뉴 " + menus.length + "개");
+      }
+
+      // 4) 가게 이름 → 웹에서 주소 찾기
+      if (shop || info.lat !== null) {
+        status.textContent = (shop ? "\"" + shop + "\" " : "") + "위치를 웹에서 찾는 중이에요…";
+        const place = await searchPlace(shop, info);
+        if (!placeInput.value.trim()) {
+          if (shop && place) placeInput.value = shop + " (" + place.address + ")";
+          else if (shop) placeInput.value = shop;
+          else if (place) placeInput.value = place.address;
+          if (placeInput.value) placeInput.classList.add("highlight");
+        }
+        if (shop) {
+          notes.push("가게 \"" + shop + "\"" + (place ? " · 주소는 " + place.how + "으로 찾음" : " · 주소는 못 찾음"));
+          mapLink.href = "https://map.naver.com/p/search/" + encodeURIComponent(shop);
+          mapLink.hidden = false;
+        } else if (place) {
+          notes.push("가게 이름은 못 읽었고, " + place.how + "로 주소를 찾음");
+        }
+      }
+
+      status.className = "goal";
+      status.textContent = notes.length
+        ? "채웠어요: 날짜·시간, " + notes.join(", ") + ". 맞는지 확인하고 고쳐 주세요."
+        : "날짜·시간만 채웠어요. 사진에서 가게 이름이나 메뉴는 찾지 못했어요.";
+    });
+
+    function showDrinks() {
+      // 최근 날짜·시간이 위로 오게 정렬해요
+      drinks.sort(function (a, b) {
+        return (b.date + (b.time || "")).localeCompare(a.date + (a.time || ""));
+      });
+      document.getElementById("drink-empty").hidden = drinks.length > 0;
+
+      const list = document.getElementById("drink-list");
+      list.innerHTML = "";
+      drinks.forEach(function (d, i) {
+        const li = document.createElement("li");
+
+        if (d.photo) {
+          const img = document.createElement("img");
+          img.className = "book-cover";
+          img.src = d.photo;
+          img.alt = d.place + " 사진";
+          li.appendChild(img);
+        }
+
+        const info = document.createElement("div");
+        info.className = "book-info";
+        const place = document.createElement("div");
+        place.className = "book-title";
+        place.textContent = "📍 " + d.place;
+        const when = document.createElement("div");
+        when.className = "book-date";
+        when.textContent = d.date + (d.time ? " · " + d.time : "");
+        info.appendChild(place);
+        info.appendChild(when);
+
+        if (d.drinks.length) {
+          const summary = document.createElement("div");
+          summary.className = "drink-summary";
+          summary.textContent = d.drinks.map(function (x) {
+            return x.type + " " + x.count + "병";
+          }).join(" · ");
+          info.appendChild(summary);
+        }
+
+        if (d.menu) {
+          const menu = document.createElement("div");
+          menu.className = "drink-summary";
+          menu.textContent = "🍽️ " + d.menu;
+          info.appendChild(menu);
+        }
+
+        // 장소를 지도에서 바로 볼 수 있는 링크
+        const map = document.createElement("a");
+        map.className = "book-date";
+        map.href = "https://map.naver.com/p/search/" + encodeURIComponent(d.place.replace(/\s*\(.*\)$/, ""));
+        map.target = "_blank";
+        map.rel = "noopener";
+        map.textContent = "🗺️ 지도에서 보기";
+        info.appendChild(map);
+
+        const del = document.createElement("button");
+        del.className = "delete";
+        del.textContent = "삭제";
+        del.onclick = function () {
+          drinks.splice(i, 1);
+          saveDrinks();
+          showDrinks();
+        };
+
+        li.appendChild(info);
+        li.appendChild(del);
+        list.appendChild(li);
+      });
+    }
+
+    document.getElementById("drink-form").addEventListener("submit", function (event) {
+      event.preventDefault();
+      const error = document.getElementById("drink-error");
+
+      // 병 수를 적은 줄만 모아요
+      const items = [];
+      document.querySelectorAll("#drink-rows .drink-row").forEach(function (row) {
+        const count = Number(row.querySelector("input").value);
+        if (count > 0) items.push({ type: row.querySelector("select").value, count: count });
+      });
+
+      drinks.push({
+        date: document.getElementById("drink-date").value,
+        time: document.getElementById("drink-time").value,
+        place: document.getElementById("drink-place").value.trim(),
+        menu: document.getElementById("drink-menu").value.trim(),
+        drinks: items,
+        photo: drinkPhotoData
+      });
+      if (!saveDrinks()) {
+        drinks.pop();
+        error.textContent = "저장 공간이 꽉 차서 기록하지 못했어요. 사진이 있는 오래된 기록을 지우거나 사진 없이 기록해 보세요.";
+        error.hidden = false;
+        return;
+      }
+      error.hidden = true;
+      showDrinks();
+      event.target.reset();
+      drinkPhotoData = "";
+      document.getElementById("drink-preview").hidden = true;
+      document.getElementById("drink-ocr-status").hidden = true;
+      document.getElementById("drink-map-link").hidden = true;
+      ["drink-date", "drink-time", "drink-place", "drink-menu"].forEach(function (id) {
+        document.getElementById(id).classList.remove("highlight");
+      });
+      document.getElementById("drink-date").value = today();
+      resetDrinkRows();
+    });
+
+    document.getElementById("drink-date").value = today();
+    resetDrinkRows();
+    showDrinks();
   </script>
 </body>
 </html>
