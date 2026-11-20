@@ -361,6 +361,20 @@
       <p id="drink-empty" class="empty">아직 추억이 없어요. 친구와 함께한 날의 사진을 올려 보세요!</p>
       <ul id="drink-list" class="book-list"></ul>
     </section>
+
+    <!-- Claude 설정: 열쇠(API 키)를 넣으면 사진을 Claude가 읽어요 -->
+    <section class="books">
+      <h2>🤖 Claude로 사진 읽기</h2>
+      <p class="hint">Claude API 키를 넣으면 책 표지·손목닥터 캡처·술자리 사진을 Claude가 정확하게 읽어요. 키는 <b>이 기기 안에만</b> 저장되고 인터넷 페이지(GitHub)에는 올라가지 않아요.</p>
+      <form id="claude-form">
+        <input id="claude-key" type="password" placeholder="sk-ant-로 시작하는 API 키" autocomplete="off">
+        <div class="row2">
+          <button type="submit">저장</button>
+          <button type="button" id="claude-key-clear" class="small-btn">지우기</button>
+        </div>
+      </form>
+      <p id="claude-key-status" class="goal"></p>
+    </section>
   </div>
 
   <!-- 여기부터 동작(JavaScript): 버튼을 눌렀을 때 일어나는 일 -->
@@ -375,6 +389,144 @@
       const d = new Date();
       return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
     }
+
+    // ===== Claude로 사진 읽기 =====
+    // API 키는 이 기기의 브라우저 저장소에만 둬요 (코드나 GitHub에는 절대 넣지 않아요)
+    const CLAUDE_KEY = "claude-api-key";
+    const CLAUDE_MODEL = "claude-haiku-5-5"; // 빠르고 저렴한 모델 (사진 글자 읽기에 충분해요)
+    const SDK_URL = "https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@1.6.0/+esm";
+
+    function getClaudeKey() {
+      try { return localStorage.getItem(CLAUDE_KEY) || ""; } catch (e) { return ""; }
+    }
+    function hasClaudeKey() {
+      return getClaudeKey().startsWith("sk-ant-");
+    }
+    function showClaudeKeyStatus() {
+      const key = getClaudeKey();
+      document.getElementById("claude-key-status").textContent = key
+        ? "✅ 키가 저장되어 있어요 (…" + key.slice(-4) + "). 사진을 올리면 Claude가 읽어요."
+        : "키가 없어요. 지금은 무료 글자 인식 도구로 읽어요.";
+    }
+
+    document.getElementById("claude-form").addEventListener("submit", function (event) {
+      event.preventDefault();
+      const input = document.getElementById("claude-key");
+      const key = input.value.trim();
+      const status = document.getElementById("claude-key-status");
+      if (!key.startsWith("sk-ant-")) {
+        status.textContent = "키는 sk-ant- 로 시작해야 해요. 다시 확인해 주세요.";
+        return;
+      }
+      try { localStorage.setItem(CLAUDE_KEY, key); } catch (e) {}
+      input.value = "";
+      showClaudeKeyStatus();
+    });
+    document.getElementById("claude-key-clear").addEventListener("click", function () {
+      try { localStorage.removeItem(CLAUDE_KEY); } catch (e) {}
+      showClaudeKeyStatus();
+    });
+    showClaudeKeyStatus();
+
+    // Anthropic SDK는 처음 쓸 때만 불러와요
+    let AnthropicSDK = null;
+    async function loadAnthropic() {
+      if (!AnthropicSDK) AnthropicSDK = (await import(SDK_URL)).default;
+      return AnthropicSDK;
+    }
+
+    // 사진 한 장을 Claude에게 보내고, 정해진 모양(schema)의 JSON으로 답을 받아요
+    async function askClaude(file, prompt, schema) {
+      const Anthropic = await loadAnthropic();
+      const client = new Anthropic({ apiKey: getClaudeKey(), dangerouslyAllowBrowser: true });
+      // 사진을 긴 쪽 1568px로 줄여서 보내요 (더 커도 정확도는 같고 요금만 늘어요)
+      const canvas = await imageToCanvas(file, 1568);
+      const data = canvas.toDataURL("image/jpeg", 0.85).split(",")[1];
+
+      const response = await client.messages.create({
+        model: CLAUDE_MODEL,
+        max_tokens: 16000,
+        // 글자 읽기는 간단한 일이라 low로 빠르고 저렴하게
+        output_config: { effort: "low", format: { type: "json_schema", schema: schema } },
+        messages: [{
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: "image/jpeg", data: data } },
+            { type: "text", text: prompt }
+          ]
+        }]
+      });
+      if (response.stop_reason === "refusal") throw new Error("refusal");
+      const text = response.content
+        .filter(function (b) { return b.type === "text"; })
+        .map(function (b) { return b.text; })
+        .join("");
+      return JSON.parse(text);
+    }
+
+    // 오류를 알기 쉬운 말로 바꿔요
+    function claudeErrorMessage(e) {
+      const A = AnthropicSDK;
+      if (A && e instanceof A.AuthenticationError) return "API 키가 맞지 않아요. 아래 'Claude로 사진 읽기'에서 키를 다시 넣어 주세요.";
+      if (A && e instanceof A.PermissionDeniedError) return "이 키로는 사용할 수 없어요. Claude Console에서 키 권한을 확인해 주세요.";
+      if (A && e instanceof A.RateLimitError) return "잠깐 너무 많이 보냈어요. 1분 뒤 다시 시도해 주세요.";
+      if (A && e instanceof A.BadRequestError) return "Claude가 요청을 받지 못했어요. 크레딧(충전 금액)이 남아 있는지 Console에서 확인해 주세요.";
+      if (A && e instanceof A.APIError) return "Claude 서버 오류(" + e.status + ")예요. 잠시 뒤 다시 시도해 주세요.";
+      if (e && e.message === "refusal") return "Claude가 이 사진은 읽지 않았어요. 직접 입력해 주세요.";
+      return "Claude에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.";
+    }
+
+    // 사진 종류별로 Claude에게 할 질문과 답 모양
+    const BOOK_SCHEMA = {
+      type: "object",
+      properties: { title: { type: "string" }, author: { type: "string" } },
+      required: ["title", "author"],
+      additionalProperties: false
+    };
+    const BOOK_PROMPT = "책 표지(또는 뒷표지) 사진이에요. 표지에 적힌 책 제목과 저자를 적힌 그대로 알려 주세요. " +
+      "띠지 문구, 출판사, 수상·판매 홍보 문구, 시리즈명은 제목에서 빼 주세요. 부제가 있으면 제목 뒤에 ': 부제'로 붙여 주세요. " +
+      "알 수 없는 칸은 빈 문자열로 두세요.";
+
+    const STEPS_SCHEMA = {
+      type: "object",
+      properties: { steps: { type: "integer" }, date: { type: "string" } },
+      required: ["steps", "date"],
+      additionalProperties: false
+    };
+    function stepsPrompt() {
+      return "손목닥터 9988 같은 건강 앱의 걸음 수 화면 캡처예요. 오늘 날짜는 " + today() + "예요. " +
+        "화면에 나온 그날의 걸음 수(정수, 쉼표 없이)와 그 기록의 날짜(YYYY-MM-DD)를 알려 주세요. " +
+        "칼로리, 거리, 포인트, 목표 걸음 수는 걸음 수가 아니에요. 연도가 안 보이면 오늘 기준으로 가장 가까운 과거 날짜로, " +
+        "'오늘'이라고 적혀 있으면 오늘 날짜로 적어 주세요. 걸음 수를 모르면 0, 날짜를 모르면 빈 문자열로 두세요.";
+    }
+
+    // DRINK_TYPES는 아래쪽에서 만들어져서, 쓸 때 함수로 꺼내요
+    function drinksSchema() { return {
+      type: "object",
+      properties: {
+        shop_name: { type: "string" },
+        menus: { type: "array", items: { type: "string" } },
+        drinks: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              type: { type: "string", enum: DRINK_TYPES },
+              bottles: { type: "number" }
+            },
+            required: ["type", "bottles"],
+            additionalProperties: false
+          }
+        }
+      },
+      required: ["shop_name", "menus", "drinks"],
+      additionalProperties: false
+    }; }
+    const DRINKS_PROMPT = "친구와 술 마신 날의 사진이에요 (간판, 메뉴판, 영수증, 술상, 술병 등). 사진에서 보이는 것만 알려 주세요.\n" +
+      "- shop_name: 간판이나 영수증에 적힌 가게 이름. 안 보이면 빈 문자열.\n" +
+      "- menus: 음식 메뉴 이름 목록 (술 제외). 영수증이나 메뉴판이면 주문한 음식, 술상 사진이면 보이는 안주. 없으면 빈 배열.\n" +
+      "- drinks: 마신 술의 종류와 병 수. 영수증이면 수량을 그대로, 사진이면 보이는 병(빈 병 포함)을 세 주세요. " +
+      "참이슬·처음처럼·진로 등은 소주, 카스·테라·켈리 등은 맥주예요. 술이 안 보이면 빈 배열.";
 
     // ===== 독서 기록장 =====
     // 기록은 브라우저 안(localStorage)에 저장돼서, 페이지를 껐다 켜도 남아 있어요
@@ -561,6 +713,29 @@
       status.hidden = false;
       status.className = "goal";
       status.textContent = "날짜를 " + shotDate + "(찍은 날짜)로 채웠어요.";
+
+      // Claude 키가 있으면 표지에서 제목을 읽어요
+      if (hasClaudeKey()) {
+        status.textContent = "Claude가 표지를 읽는 중이에요… (날짜는 " + shotDate + "로 채웠어요)";
+        try {
+          const book = await askClaude(file, BOOK_PROMPT, BOOK_SCHEMA);
+          const title = (book.title || "").trim();
+          const autoFilled = titleInput.classList.contains("highlight");
+          if (title && (!titleInput.value.trim() || autoFilled)) {
+            titleInput.value = title;
+            titleInput.classList.add("highlight");
+            status.textContent = "Claude가 읽은 제목: \"" + title + "\"" + (book.author ? " (" + book.author + ")" : "") +
+              ". 날짜는 " + shotDate + "예요. 맞는지 확인해 주세요.";
+          } else if (title) {
+            status.textContent = "Claude가 읽은 제목은 \"" + title + "\"예요. 이미 적은 제목은 그대로 뒀어요.";
+          } else {
+            status.textContent = "Claude도 제목을 찾지 못했어요. 텍스트 스캔으로 넣어 주세요.";
+          }
+        } catch (e) {
+          status.className = "error";
+          status.textContent = claudeErrorMessage(e);
+        }
+      }
     });
 
     // 뒷표지 바코드 사진: 제목만 찾아요 (표지 사진·날짜는 그대로)
@@ -1049,6 +1224,31 @@
       status.className = "goal";
       status.textContent = "캡처를 읽는 중이에요… (처음 한 번은 30초~1분 걸려요)";
 
+      // Claude 키가 있으면 Claude가 읽어요 (없으면 아래 무료 도구로)
+      if (hasClaudeKey()) {
+        status.textContent = "Claude가 캡처를 읽는 중이에요…";
+        try {
+          const r = await askClaude(file, stepsPrompt(), STEPS_SCHEMA);
+          if (r.steps > 0) {
+            countInput.value = r.steps;
+            countInput.classList.add("highlight");
+            const note = r.date && r.date !== shotDate
+              ? " 화면에는 " + r.date + "로 적혀 있어요. 그 날짜 기록이면 날짜를 고쳐 주세요."
+              : "";
+            status.textContent = "Claude가 읽었어요: " + shotDate + "(찍은 날짜) · " + comma(r.steps) +
+              "보. 맞는지 확인하고 '기록하기'를 눌러 주세요." + note;
+          } else {
+            status.className = "error";
+            status.textContent = "Claude가 걸음 수를 찾지 못했어요. 걸음 수가 보이는 화면으로 다시 캡처해 주세요.";
+          }
+        } catch (e) {
+          status.className = "error";
+          status.textContent = claudeErrorMessage(e);
+        }
+        event.target.value = "";
+        return;
+      }
+
       try {
         await loadTesseract();
         if (!ocrWorker) ocrWorker = await Tesseract.createWorker("kor+eng");
@@ -1301,20 +1501,40 @@
       status.hidden = false;
       status.className = "goal";
       status.textContent = "사진에서 가게 이름과 메뉴를 읽는 중이에요… (처음 한 번은 30초~1분 걸려요)";
-      let lines = [];
-      try {
-        await loadTesseract();
-        if (!ocrWorker) ocrWorker = await Tesseract.createWorker("kor+eng");
-        lines = (await ocrWorker.recognize(file)).data.lines || [];
-      } catch (e) {
-        status.className = "error";
-        status.textContent = "글자 인식 도구를 불러오지 못했어요. 날짜·시간만 채웠어요.";
-        return;
+      let shop = "";
+      let menus = [];
+      let found = [];
+      if (hasClaudeKey()) {
+        // Claude가 읽어요
+        status.textContent = "Claude가 사진을 읽는 중이에요…";
+        try {
+          const r = await askClaude(file, DRINKS_PROMPT, drinksSchema());
+          shop = (r.shop_name || "").trim();
+          menus = (r.menus || []).map(function (m) { return m.trim(); }).filter(Boolean).slice(0, 10);
+          found = (r.drinks || [])
+            .filter(function (d) { return d.bottles > 0; })
+            .map(function (d) { return { type: d.type, count: d.bottles }; });
+        } catch (e) {
+          status.className = "error";
+          status.textContent = claudeErrorMessage(e) + " (날짜·시간만 채웠어요)";
+          return;
+        }
+      } else {
+        // 무료 글자 인식 도구로 읽어요
+        let lines = [];
+        try {
+          await loadTesseract();
+          if (!ocrWorker) ocrWorker = await Tesseract.createWorker("kor+eng");
+          lines = (await ocrWorker.recognize(file)).data.lines || [];
+        } catch (e) {
+          status.className = "error";
+          status.textContent = "글자 인식 도구를 불러오지 못했어요. 날짜·시간만 채웠어요.";
+          return;
+        }
+        shop = findShopName(lines);
+        menus = findMenus(lines);
+        found = findDrinks(lines);
       }
-
-      const shop = findShopName(lines);
-      const menus = findMenus(lines);
-      const found = findDrinks(lines);
       const notes = [];
 
       // 술 종류·병 수: 찾으면 목록을 새로 채워요 (숫자는 칸에서 바로 고칠 수 있어요)
