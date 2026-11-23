@@ -214,7 +214,7 @@
     .chart {
       display: flex;
       align-items: flex-end;
-      gap: 6px;
+      gap: 2px;
       height: 140px;
       margin-top: 16px;
       padding: 0 4px;
@@ -225,7 +225,7 @@
       position: absolute;
       left: 0;
       right: 0;
-      border-top: 1px dashed #d97757;
+      border-top: 1px dashed #2f6fd6;
     }
     .bar-wrap {
       flex: 1;
@@ -239,16 +239,16 @@
     }
     .bar {
       width: 100%;
-      max-width: 36px;
-      background: #e8c4b5;
+      max-width: 56px;
+      background: #b7d0f0;
       border-radius: 4px 4px 0 0;
     }
     .bar.reached {
-      background: #d97757;
+      background: #2f6fd6;
     }
     .bar-labels {
       display: flex;
-      gap: 6px;
+      gap: 2px;
       padding: 4px 4px 0;
       font-size: 11px;
       color: #888;
@@ -320,7 +320,7 @@
 
       <form id="step-form">
         <input id="step-date" type="date" required>
-        <input id="step-count" type="number" min="0" step="1" placeholder="걸음 수 (예: 8500)" required>
+        <input id="step-count" type="text" inputmode="numeric" placeholder="걸음 수 (예: 8500)" required>
         <p class="hint">💡 캡처가 잘 안 읽히면 걸음 수 칸을 누르고 한 번 더 눌러 <b>텍스트 스캔</b>으로 손목닥터 화면 숫자를 바로 읽어 넣을 수 있어요.</p>
         <button type="submit">기록하기</button>
       </form>
@@ -968,7 +968,12 @@
     document.getElementById("step-form").addEventListener("submit", function (event) {
       event.preventDefault();
       const date = document.getElementById("step-date").value;
-      const count = Number(document.getElementById("step-count").value);
+      // 텍스트 스캔으로 "8,532보"처럼 들어와도 숫자만 골라내요
+      const count = Number(document.getElementById("step-count").value.replace(/[^0-9]/g, ""));
+      if (!count) {
+        document.getElementById("step-count").focus();
+        return;
+      }
       // 같은 날짜가 이미 있으면 새 숫자로 바꿔요
       steps = steps.filter(function (s) { return s.date !== date; });
       steps.push({ date: date, count: count });
