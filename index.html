@@ -285,6 +285,14 @@
     .steps-num {
       font-variant-numeric: tabular-nums;
     }
+    .quote {
+      margin: 8px 0 20px;
+      padding: 4px 8px;
+      line-height: 1.8;
+      font-size: 1.05em;
+    }
+    .quote p { margin: 0 0 8px; }
+    .quote footer { font-size: 0.85em; opacity: 0.7; }
   </style>
 </head>
 
@@ -292,10 +300,12 @@
   <!-- 여기부터 내용(HTML): 화면에 보이는 글과 버튼입니다 -->
   <div class="card">
     <div class="emoji">🦁</div>
-    <h1>안녕하세요, 저는 황태우입니다</h1>
-    <p>인생 처음으로 만든 웹페이지예요!</p>
+    <blockquote class="quote">
+      <p>그리워하는데도 한 번 만나고는 못 만나게 되기도 하고,<br>
+      일생을 못 잊으면서도 아니 만나고 살기도 한다.</p>
+      <footer>— 피천득, 〈인연〉</footer>
+    </blockquote>
 
-    <h2>좋아하는 것</h2>
     <ul>
       <li>조용한 산책</li>
       <li>도서관에서 책 읽기</li>
