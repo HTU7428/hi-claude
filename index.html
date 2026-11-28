@@ -377,6 +377,7 @@
         </div>
         <input id="drink-place" placeholder="장소 (예: 을지로 노가리 골목)" required>
         <input id="drink-menu" placeholder="메뉴 (예: 노가리, 계란말이)">
+        <input id="drink-with" placeholder="함께한 사람 (예: 민수, 지영)" aria-label="함께한 사람">
         <p class="hint">💡 가게 이름이나 메뉴가 잘 안 읽히면 칸을 누르고 한 번 더 눌러 <b>텍스트 스캔</b>으로 간판·메뉴판·영수증을 비추면 바로 들어가요.</p>
 
         <!-- 마신 술: 종류는 목록에서 고르고, 병 수는 직접 입력해요 -->
@@ -1450,6 +1451,13 @@
           info.appendChild(menu);
         }
 
+        if (d.with) {
+          const who = document.createElement("div");
+          who.className = "drink-summary";
+          who.textContent = "👥 " + d.with;
+          info.appendChild(who);
+        }
+
         // 장소를 지도에서 바로 볼 수 있는 링크
         const map = document.createElement("a");
         map.className = "book-date";
@@ -1490,6 +1498,7 @@
         time: document.getElementById("drink-time").value,
         place: document.getElementById("drink-place").value.trim(),
         menu: document.getElementById("drink-menu").value.trim(),
+        with: document.getElementById("drink-with").value.trim(),
         drinks: items,
         photo: drinkPhotoData
       });
