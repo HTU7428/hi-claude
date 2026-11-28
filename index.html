@@ -145,6 +145,64 @@
       flex-shrink: 0;
       background: #e5e1d8;
     }
+    /* 사진 위에 1차·2차·3차 표시 */
+    .photo-wrap {
+      position: relative;
+      flex-shrink: 0;
+      width: 56px;
+      height: 80px;
+    }
+    .round-badge {
+      position: absolute;
+      left: 4px;
+      bottom: 4px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      background: #d97757;
+      color: white;
+      font-size: 12px;
+      font-weight: bold;
+      line-height: 1.5;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+    .photo-wrap.big {
+      width: 96px;
+      height: 136px;
+    }
+    .photo-wrap.big .book-cover {
+      width: 100%;
+      height: 100%;
+    }
+    .no-photo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      font-size: 12px;
+      color: #999;
+    }
+    /* 같은 날 여러 차수: 사진은 가로로 나란히, 글은 아래로 */
+    .book-list li.day-group {
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+    .day-head {
+      font-weight: bold;
+    }
+    .photo-strip {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .round-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      border-top: 1px solid #e5e1d8;
+      padding-top: 8px;
+    }
     .book-info {
       flex: 1;
       min-width: 0;
@@ -401,6 +459,7 @@
           <input id="drink-date" type="date" required aria-label="날짜">
           <input id="drink-time" type="time" aria-label="시간">
         </div>
+        <p id="drink-round-hint" class="hint" hidden></p>
         <input id="drink-place" placeholder="장소 (예: 을지로 노가리 골목)" required>
         <input id="drink-menu" placeholder="메뉴 (예: 노가리, 계란말이)">
         <input id="drink-cost" inputmode="numeric" placeholder="술값 (결제한 금액, 영수증을 찍으면 자동 입력)" aria-label="술값">
@@ -1319,6 +1378,37 @@
       return best;
     }
 
+    // 영수증에 찍힌 "2026-11-28 21:35:10", "26/11/28 21:35" 같은 날짜·시간을 찾아요
+    function findReceiptTime(lines) {
+      const text = lines.map(function (l) { return l.text; }).join("\n");
+      const m = text.match(/(20\d{2}|\d{2})\s*[-./]\s*(\d{1,2})\s*[-./]\s*(\d{1,2})[^\d\n]{0,8}(\d{1,2})\s*:\s*(\d{2})/);
+      if (!m) return null;
+      const year = m[1].length === 2 ? 2000 + Number(m[1]) : Number(m[1]);
+      const month = Number(m[2]), day = Number(m[3]), hour = Number(m[4]), min = Number(m[5]);
+      if (month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || min > 59) return null;
+      if (year > new Date().getFullYear() + 1) return null;
+      const pad = function (n) { return String(n).padStart(2, "0"); };
+      return { date: year + "-" + pad(month) + "-" + pad(day), time: pad(hour) + ":" + pad(min) };
+    }
+
+    // 지금 적는 기록이 그날 몇 차가 될지 알려줘요 (같은 날 기록들을 시간 순으로 비교)
+    function updateRoundHint() {
+      const hint = document.getElementById("drink-round-hint");
+      const date = document.getElementById("drink-date").value;
+      const time = document.getElementById("drink-time").value;
+      if (!date) { hint.hidden = true; return; }
+      const others = drinks.filter(function (d) { return d.date === date; });
+      if (!others.length) {
+        hint.textContent = "📌 이 날의 첫 기록이에요. 같은 날 한 곳이 더 생기면 1차·2차로 나뉘어 보여요.";
+      } else {
+        const before = others.filter(function (d) { return (d.time || "") <= time; }).length;
+        hint.textContent = "📌 이 날 기록이 " + others.length + "건 있어서, 시간으로 보면 이 기록은 " + (before + 1) + "차로 표시돼요 (총 " + (others.length + 1) + "차).";
+      }
+      hint.hidden = false;
+    }
+    document.getElementById("drink-date").addEventListener("change", updateRoundHint);
+    document.getElementById("drink-time").addEventListener("change", updateRoundHint);
+
     function findShopName(lines) {
       // 메뉴 줄과 술병 이름은 빼고, 남은 것 중 가장 큰 글씨를 가게 이름으로 봐요
       const rest = lines.filter(function (l) {
@@ -1414,6 +1504,15 @@
       const total = findTotal(lines);
       const notes = [];
 
+      // 영수증에 찍힌 날짜·시간이 있으면 사진 시간보다 우선해요 (차수가 시간 순으로 정해져요)
+      const receipt = findReceiptTime(lines);
+      if (receipt) {
+        dateInput.value = receipt.date;
+        timeInput.value = receipt.time;
+        notes.push("영수증 시간 " + receipt.date + " " + receipt.time);
+      }
+      updateRoundHint();
+
       // 술값(낸 금액): 영수증 합계를 찾으면 채워요 (이미 적은 값이 있으면 그대로 둬요)
       const costInput = document.getElementById("drink-cost");
       if (total && !costInput.value.trim()) {
@@ -1467,87 +1566,128 @@
       this.value = n ? Number(n).toLocaleString("ko-KR") : "";
     });
 
+    // 사진 한 장 (차수가 있으면 왼쪽 아래에 1차·2차·3차 표시)
+    function makePhoto(d, round, big) {
+      const wrap = document.createElement("div");
+      wrap.className = "photo-wrap" + (big ? " big" : "");
+      if (d.photo) {
+        const img = document.createElement("img");
+        img.className = "book-cover";
+        img.src = d.photo;
+        img.alt = (round ? round + "차 " : "") + d.place + " 사진";
+        wrap.appendChild(img);
+      } else {
+        const none = document.createElement("div");
+        none.className = "book-cover no-photo";
+        none.textContent = "사진 없음";
+        wrap.appendChild(none);
+      }
+      if (round) {
+        const badge = document.createElement("span");
+        badge.className = "round-badge";
+        badge.textContent = round + "차";
+        wrap.appendChild(badge);
+      }
+      return wrap;
+    }
+
+    // 장소·시간·술·메뉴·술값·함께한 사람·지도 링크
+    function makeInfo(d, round) {
+      const info = document.createElement("div");
+      info.className = "book-info";
+      const place = document.createElement("div");
+      place.className = "book-title";
+      place.textContent = (round ? round + "차 · " : "") + "📍 " + d.place;
+      const when = document.createElement("div");
+      when.className = "book-date";
+      when.textContent = d.date + (d.time ? " · " + d.time : "");
+      info.appendChild(place);
+      info.appendChild(when);
+
+      function line(text) {
+        const el = document.createElement("div");
+        el.className = "drink-summary";
+        el.textContent = text;
+        info.appendChild(el);
+      }
+      if (d.drinks.length) line(d.drinks.map(function (x) { return x.type + " " + x.count + "병"; }).join(" · "));
+      if (d.menu) line("🍽️ " + d.menu);
+      if (d.cost) line("💰 " + d.cost.toLocaleString("ko-KR") + "원");
+      if (d.with) line("👥 " + d.with);
+
+      // 장소를 지도에서 바로 볼 수 있는 링크
+      const map = document.createElement("a");
+      map.className = "book-date";
+      map.href = "https://map.naver.com/p/search/" + encodeURIComponent(d.place.replace(/\s*\(.*\)$/, ""));
+      map.target = "_blank";
+      map.rel = "noopener";
+      map.textContent = "🗺️ 지도에서 보기";
+      info.appendChild(map);
+      return info;
+    }
+
+    function makeDelete(d) {
+      const del = document.createElement("button");
+      del.className = "delete";
+      del.textContent = "삭제";
+      del.onclick = function () {
+        drinks.splice(drinks.indexOf(d), 1);
+        saveDrinks();
+        showDrinks();
+      };
+      return del;
+    }
+
     function showDrinks() {
-      // 최근 날짜·시간이 위로 오게 정렬해요
+      // 날짜는 최근이 위로, 같은 날 안에서는 시간이 이른 순서(1차 → 2차 → 3차)로 정렬해요
       drinks.sort(function (a, b) {
-        return (b.date + (b.time || "")).localeCompare(a.date + (a.time || ""));
+        if (a.date !== b.date) return b.date.localeCompare(a.date);
+        return (a.time || "").localeCompare(b.time || "");
       });
       document.getElementById("drink-empty").hidden = drinks.length > 0;
 
+      // 같은 날짜끼리 묶어요
+      const days = [];
+      drinks.forEach(function (d) {
+        const last = days[days.length - 1];
+        if (last && last[0].date === d.date) last.push(d);
+        else days.push([d]);
+      });
+
       const list = document.getElementById("drink-list");
       list.innerHTML = "";
-      drinks.forEach(function (d, i) {
+      days.forEach(function (day) {
         const li = document.createElement("li");
 
-        if (d.photo) {
-          const img = document.createElement("img");
-          img.className = "book-cover";
-          img.src = d.photo;
-          img.alt = d.place + " 사진";
-          li.appendChild(img);
+        // 그날 기록이 하나뿐이면 예전처럼 사진 옆에 글을 보여줘요
+        if (day.length === 1) {
+          const d = day[0];
+          if (d.photo) li.appendChild(makePhoto(d, 0, false));
+          li.appendChild(makeInfo(d, 0));
+          li.appendChild(makeDelete(d));
+          list.appendChild(li);
+          return;
         }
 
-        const info = document.createElement("div");
-        info.className = "book-info";
-        const place = document.createElement("div");
-        place.className = "book-title";
-        place.textContent = "📍 " + d.place;
-        const when = document.createElement("div");
-        when.className = "book-date";
-        when.textContent = d.date + (d.time ? " · " + d.time : "");
-        info.appendChild(place);
-        info.appendChild(when);
+        // 2건 이상: 사진을 가로로 나란히(1차 → 2차 → 3차), 글은 그 아래에 차수별로
+        li.className = "day-group";
+        const head = document.createElement("div");
+        head.className = "day-head";
+        head.textContent = "📅 " + day[0].date + " · " + day.length + "차까지";
+        li.appendChild(head);
 
-        if (d.drinks.length) {
-          const summary = document.createElement("div");
-          summary.className = "drink-summary";
-          summary.textContent = d.drinks.map(function (x) {
-            return x.type + " " + x.count + "병";
-          }).join(" · ");
-          info.appendChild(summary);
-        }
+        const strip = document.createElement("div");
+        strip.className = "photo-strip";
+        day.forEach(function (d, n) { strip.appendChild(makePhoto(d, n + 1, true)); });
+        li.appendChild(strip);
 
-        if (d.menu) {
-          const menu = document.createElement("div");
-          menu.className = "drink-summary";
-          menu.textContent = "🍽️ " + d.menu;
-          info.appendChild(menu);
-        }
-
-        if (d.cost) {
-          const cost = document.createElement("div");
-          cost.className = "drink-summary";
-          cost.textContent = "💰 " + d.cost.toLocaleString("ko-KR") + "원";
-          info.appendChild(cost);
-        }
-
-        if (d.with) {
-          const who = document.createElement("div");
-          who.className = "drink-summary";
-          who.textContent = "👥 " + d.with;
-          info.appendChild(who);
-        }
-
-        // 장소를 지도에서 바로 볼 수 있는 링크
-        const map = document.createElement("a");
-        map.className = "book-date";
-        map.href = "https://map.naver.com/p/search/" + encodeURIComponent(d.place.replace(/\s*\(.*\)$/, ""));
-        map.target = "_blank";
-        map.rel = "noopener";
-        map.textContent = "🗺️ 지도에서 보기";
-        info.appendChild(map);
-
-        const del = document.createElement("button");
-        del.className = "delete";
-        del.textContent = "삭제";
-        del.onclick = function () {
-          drinks.splice(i, 1);
-          saveDrinks();
-          showDrinks();
-        };
-
-        li.appendChild(info);
-        li.appendChild(del);
+        day.forEach(function (d, n) {
+          const row = document.createElement("div");
+          row.className = "round-row";
+          row.appendChild(makeInfo(d, n + 1));
+          row.appendChild(makeDelete(d));
+          li.appendChild(row);
+        });
         list.appendChild(li);
       });
     }
@@ -1591,11 +1731,13 @@
       });
       document.getElementById("drink-date").value = today();
       resetDrinkRows();
+      updateRoundHint();
     });
 
     document.getElementById("drink-date").value = today();
     resetDrinkRows();
     showDrinks();
+    updateRoundHint();
   </script>
 </body>
 </html>
