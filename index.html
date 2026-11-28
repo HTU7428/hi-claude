@@ -35,8 +35,14 @@
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
       text-align: center;
     }
-    .emoji {
-      font-size: 64px;
+    .profile-photo {
+      display: block;
+      width: 200px;
+      max-width: 70%;
+      aspect-ratio: 2 / 3;
+      object-fit: cover;
+      margin: 0 auto 16px;
+      border-radius: 16px;
     }
     h1 {
       margin: 8px 0;
@@ -299,7 +305,7 @@
 <body>
   <!-- 여기부터 내용(HTML): 화면에 보이는 글과 버튼입니다 -->
   <div class="card">
-    <div class="emoji">🦁</div>
+    <img class="profile-photo" src="profile.jpg" alt="황태우와 아들의 사진">
     <blockquote class="quote">
       <p>그리워하는데도 한 번 만나고는 못 만나게 되기도 하고,<br>
       일생을 못 잊으면서도 아니 만나고 살기도 한다.</p>
