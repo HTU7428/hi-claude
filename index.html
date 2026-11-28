@@ -293,11 +293,19 @@
     }
     .quote {
       margin: 8px 0 20px;
-      padding: 4px 8px;
+      padding: 4px 0;
       line-height: 1.8;
-      font-size: 1.05em;
     }
-    .quote p { margin: 0 0 8px; }
+    /* 두 줄이 줄바꿈 없이 그대로 보이도록, 화면 너비에 맞춰 글자 크기를 줄여요 */
+    .quote p {
+      margin: 0 0 8px;
+      white-space: nowrap;
+      font-size: min(17px, calc((min(100vw, 480px) - 32px - 64px) / 26.5));
+    }
+    @media (max-width: 520px) {
+      .card { padding: 24px 16px; }
+      .quote p { font-size: min(17px, calc((100vw - 32px - 32px) / 26.5)); }
+    }
     .quote footer { font-size: 0.85em; opacity: 0.7; }
   </style>
 </head>
