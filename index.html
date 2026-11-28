@@ -39,8 +39,9 @@
       display: block;
       width: 200px;
       max-width: 70%;
-      aspect-ratio: 2 / 3;
+      aspect-ratio: 1336 / 2304;
       object-fit: cover;
+      object-position: 100% 50%; /* 사진 왼쪽 여백을 조금 잘라 사람이 가운데 오게 해요 */
       margin: 0 auto 16px;
       border-radius: 16px;
     }
@@ -300,11 +301,12 @@
     .quote p {
       margin: 0 0 8px;
       white-space: nowrap;
-      font-size: min(17px, calc((min(100vw, 480px) - 32px - 64px) / 26.5));
+      font-size: min(17px, calc((min(100vw, 480px) - 32px - 64px) / 26));
     }
     @media (max-width: 520px) {
-      .card { padding: 24px 16px; }
-      .quote p { font-size: min(17px, calc((100vw - 32px - 32px) / 26.5)); }
+      body { padding: 24px 8px; }
+      .card { padding: 24px 12px; }
+      .quote p { font-size: min(17px, calc((100vw - 16px - 24px) / 26)); }
     }
     .quote footer { font-size: 0.85em; opacity: 0.7; }
   </style>
